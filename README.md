@@ -160,6 +160,7 @@ Remember while defining the keys, specify
 * `Asymmetric Sign`:  
 * `2048 bit RSA key PKCS#1 v1.5 padding - SHA256 Digest`
 * Select _"Import Key Material"_
+* Click the "Create" button but _do not_ import anything (we ill do that later in the next step; simply navigate back)
 
 ![images/server.png](images/server.png)
 
