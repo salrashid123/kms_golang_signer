@@ -40,7 +40,7 @@ func main() {
 	clientCaCertPool := x509.NewCertPool()
 	clientCaCertPool.AppendCertsFromPEM(clientCaCert)
 
-	r := &sal.KMS{
+	r, err := sal.NewKMSCrypto(&sal.KMS{
 		PublicKeyFile: "server.crt",
 		ProjectId:     projectID,
 		LocationId:    "us-central1",
@@ -50,6 +50,10 @@ func main() {
 		RootCAs:       caCertPool,
 		ClientCAs:     clientCaCertPool,
 		ClientAuth:    tls.RequireAndVerifyClientCert,
+	})
+	if err != nil {
+		log.Println(err)
+		return
 	}
 
 	http.HandleFunc("/", fronthandler)

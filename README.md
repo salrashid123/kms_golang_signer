@@ -289,13 +289,18 @@ If you want to test crypto.Decryptor, assign `Cloud KMS CryptoKey Decrypter` rol
 	}
 	log.Printf("Encrypted Data: %v", base64.StdEncoding.EncodeToString(ciphertext))
 
-	r := &sal.KMS{
+	r, err := sal.NewKMSCrypto(&sal.KMS{
 		ProjectId:  "mineral-minutia-820",
 		LocationId: "us-central1",
 		KeyRing:    "mycacerts",
 		Key:        "decrypter",
 		KeyVersion: "1",
+	})
+	if err != nil {
+		log.Println(err)
+		return
 	}
+
 	plaintext, err := r.Decrypt(rand.Reader, ciphertext, nil)
 	if err != nil {
 		log.Fatal(err)

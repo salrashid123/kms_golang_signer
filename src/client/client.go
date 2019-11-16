@@ -22,7 +22,7 @@ func main() {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
-	r := &sal.KMS{
+	r, err := sal.NewKMSCrypto(&sal.KMS{
 		PublicKeyFile: "client.crt",
 		ProjectId:     projectID,
 		LocationId:    "us-central1",
@@ -30,6 +30,10 @@ func main() {
 		Key:           "client",
 		KeyVersion:    "1",
 		RootCAs:       caCertPool,
+	})
+	if err != nil {
+		log.Println(err)
+		return
 	}
 
 	tr := &http.Transport{
