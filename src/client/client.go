@@ -37,7 +37,7 @@ func main() {
 	}
 
 	tr := &http.Transport{
-		TLSClientConfig: r.NewTLSConfig(),
+		TLSClientConfig: r.TLSConfig(),
 	}
 	client := &http.Client{Transport: tr}
 

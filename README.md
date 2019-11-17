@@ -58,14 +58,17 @@ func main() {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
-	r := &sal.KMS{
-		PublicKeyFile: "server.crt",
+	r, err := sal.NewKMSCrypto(&sal.KMS{
+		PublicKeyFile: "client.crt",
 		ProjectId:     projectID,
 		LocationId:    "us-central1",
 		KeyRing:       "mycacerts",
-		Key:           "server",
+		Key:           "client",
 		KeyVersion:    "1",
 		RootCAs:       caCertPool,
+	})
+	if err != nil {
+		log.Fatalf(err)
 	}
 
 	http.HandleFunc("/", fronthandler)
@@ -73,7 +76,7 @@ func main() {
 	var server *http.Server
 	server = &http.Server{
 		Addr:      ":8081",
-		TLSConfig: r.NewTLSConfig(),
+		TLSConfig: r.TLSConfig(),
 	}
 	http2.ConfigureServer(server, &http2.Server{})
 	log.Println("Starting Server..")
