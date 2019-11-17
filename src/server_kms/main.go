@@ -62,7 +62,7 @@ func main() {
 	var server *http.Server
 	server = &http.Server{
 		Addr:      ":8081",
-		TLSConfig: r.NewTLSConfig(),
+		TLSConfig: r.TLSConfig(),
 	}
 	http2.ConfigureServer(server, &http2.Server{})
 	log.Println("Starting Server..")
