@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	sal "github.com/salrashid123/misc/kms"
+	sal "github.com/salrashid123/signer/kms"
 )
 
 const (

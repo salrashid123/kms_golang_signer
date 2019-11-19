@@ -21,7 +21,7 @@ You ofcourse don't need to run mTLS here..you can just use KMS for one direction
 
 At the heart of all this is the wrapper implementation i hacked here that wraps KMS api calls with the `Signer`
 
-- [https://github.com/salrashid123/misc/blob/master/kms/kms.go](https://github.com/salrashid123/misc/blob/master/kms/kms.go)
+- [https://github.com/salrashid123/signer/blob/master/kms/kms.go](https://github.com/salrashid123/signer/blob/master/kms/kms.go)
 
 
 So a sample sever for TLS looks prettymuch like what you'd expect anyway
@@ -35,7 +35,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	sal "github.com/salrashid123/misc/kms"
+	sal "github.com/salrashid123/signer/kms"
 	"crypto/tls"
 	"golang.org/x/net/http2"
 )
