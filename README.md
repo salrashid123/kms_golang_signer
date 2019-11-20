@@ -3,7 +3,7 @@
 
 A couple weeks back I hacked golang's [crypto.Signer](https://golang.org/pkg/crypto/#Signer) and [crypto.Decrypter](https://golang.org/pkg/crypto/#Decrypter) interface to the `Trusted Platform Module (TPM)` go interface i've been working with lately.  While working with that, I knew you can seal a key to a TPM and make it sign for some data just like with KMS...I knew TLS connections primarily use signatures during the exchange so i thought: _is there anyway to add a signer interface to [go-tpm](https://github.com/google/go-tpm) such that i can use the key in the TPM with SSL_?  Yep, that involves having something implement the `crypto.Signer` interface (mostly).
 
-The implementation i have for that is just a hack [here](https://github.com/salrashid123/misc/blob/master/tpm/tpm.go) (i'm waiting for it get included officially to go-tpm)
+The implementation i have for that is just a hack [here](https://github.com/salrashid123/signer)/
 
 So...coming back to KMS..this repo is an extension of that idea where you can run an HTTPs server and client where the private keys are save in KMS.
 
@@ -219,7 +219,7 @@ go run src/server_kms/main.go
 ```
 
 You'll need to `go get` all the libraries missing (sorry, i didn't use gomodules)
-  eg: `golang.org/x/oauth2/google google.golang.org/api/cloudkms/v1 github.com/salrashid123/misc/kms`
+  eg: `golang.org/x/oauth2/google google.golang.org/api/cloudkms/v1 github.com/salrashid123/signer/kms`
 
 ### Run mTLS Client
 
