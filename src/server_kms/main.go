@@ -45,11 +45,16 @@ func main() {
 		ProjectId:     projectID,
 		LocationId:    "us-central1",
 		KeyRing:       "mycacerts",
-		Key:           "server",
-		KeyVersion:    "1",
-		RootCAs:       caCertPool,
-		ClientCAs:     clientCaCertPool,
-		ClientAuth:    tls.RequireAndVerifyClientCert,
+
+		Key:        "server",
+		KeyVersion: "2",
+		
+		ExtTLSConfig: &tls.Config{
+			RootCAs:    caCertPool,
+			ClientCAs:  clientCaCertPool,
+			ClientAuth: tls.RequireAndVerifyClientCert,
+		},		
+
 	})
 	if err != nil {
 		log.Println(err)

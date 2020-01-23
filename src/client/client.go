@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
@@ -11,7 +12,7 @@ import (
 )
 
 const (
-	projectID = "foo"
+	projectID = "mineral-minutia-820"
 )
 
 var ()
@@ -28,8 +29,12 @@ func main() {
 		LocationId:    "us-central1",
 		KeyRing:       "mycacerts",
 		Key:           "client",
-		KeyVersion:    "1",
-		RootCAs:       caCertPool,
+		KeyVersion:    "2",
+
+		ExtTLSConfig: &tls.Config{
+			RootCAs:    caCertPool,
+			ServerName: "localhost",
+		},
 	})
 	if err != nil {
 		log.Println(err)

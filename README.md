@@ -65,7 +65,9 @@ func main() {
 		KeyRing:       "mycacerts",
 		Key:           "client",
 		KeyVersion:    "1",
-		RootCAs:       caCertPool,
+		ExtTLSConfig: &tls.Config{
+			RootCAs:    caCertPool,
+		},	
 	})
 	if err != nil {
 		log.Fatalf(err)
