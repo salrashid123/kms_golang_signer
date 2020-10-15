@@ -7,15 +7,15 @@ import (
 	"log"
 	"net/http"
 
-	sal "github.com/salrashid123/signer/kms"
-
 	"crypto/tls"
+
+	sal "github.com/salrashid123/signer/kms"
 
 	"golang.org/x/net/http2"
 )
 
 const (
-	projectID = "foo"
+	projectID = "mineral-minutia-820"
 )
 
 var ()
@@ -47,14 +47,13 @@ func main() {
 		KeyRing:       "mycacerts",
 
 		Key:        "server",
-		KeyVersion: "2",
-		
+		KeyVersion: "4",
+
 		ExtTLSConfig: &tls.Config{
 			RootCAs:    caCertPool,
 			ClientCAs:  clientCaCertPool,
 			ClientAuth: tls.RequireAndVerifyClientCert,
-		},		
-
+		},
 	})
 	if err != nil {
 		log.Println(err)

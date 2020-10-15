@@ -24,6 +24,8 @@ At the heart of all this is the wrapper implementation i hacked here that wraps 
 - [https://github.com/salrashid123/signer/blob/master/kms/kms.go](https://github.com/salrashid123/signer/blob/master/kms/kms.go)
 
 
+>> IMPORTANT: you must use at **MOST** go1.13 since versions beyond that uses RSA-PSS (ref [32425](https://github.com/golang/go/issues/32425)) and KMS only support RSA
+
 So a sample sever for TLS looks prettymuch like what you'd expect anyway
 
 ```golang

@@ -29,7 +29,7 @@ func main() {
 		LocationId:    "us-central1",
 		KeyRing:       "mycacerts",
 		Key:           "client",
-		KeyVersion:    "2",
+		KeyVersion:    "4",
 
 		ExtTLSConfig: &tls.Config{
 			RootCAs:    caCertPool,
