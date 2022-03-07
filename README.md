@@ -56,12 +56,12 @@ func fronthandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
-	caCert, err := ioutil.ReadFile("CA_crt.pem")
+	caCert, err := ioutil.ReadFile("certs/tls-ca.pem")
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
 	r, err := sal.NewKMSCrypto(&sal.KMS{
-		PublicKeyFile: "client.crt",
+		PublicKeyFile: "certs/client.crt",
 		ProjectId:     projectID,
 		LocationId:    "us-central1",
 		KeyRing:       "mycacerts",
@@ -100,43 +100,13 @@ Anyway, if you're still interested:
 
 ### Generate local CA
 
-First we need to generate a CA an certificates we want to import.  The following describes the basic flow derived from a prior article [here](https://github.com/salrashid123/squid_proxy#generating-new-ca) to create a CA, a set of server and client certificates.  We are defining the server cert to have 'CN=localhost` but you are free to define wherever you with to host the service
+First we need to generate a CA an certificates we want to import.  The following describes the basic flow derived from a prior article [here](https://github.com/salrashid123/ca_scratchpad) to create a CA, a set of server and client certificates.  We are defining the server cert to have 'CN=localhost` but you are free to define wherever you with to host the service
+
+NOTE, i used `Signature Algorithm: sha256WithRSAEncryption` for my CA and certs
 
 
-```bash
-cd myCA
-mkdir new_certs
-touch index.txt
-echo 00 > serial
 
-openssl genrsa -out CA_key.pem 2048
-openssl req -x509 -days 600 -new -nodes -key CA_key.pem -out CA_crt.pem -extensions v3_ca -config openssl.conf    -subj "/C=US/ST=California/L=Mountain View/O=Google/OU=Enterprise/CN=MyCA"
-
-
-openssl genrsa -out server.key 2048
-openssl req -config openssl.conf -days 400 -out server.csr -key server.key -new -sha256  -extensions v3_req  -subj "/C=US/ST=California/L=Mountain View/O=Google/OU=Enterprise/CN=localhost"
-openssl ca -config openssl.conf -days 400 -notext  -in server.csr   -out server.crt
-
- openssl x509 -in server.crt  -noout -pubkey  > server.pem
-
-
-openssl genrsa -out client.key 2048
-openssl req -config openssl.conf -days 400 -out client.csr -key client.key -new -sha256  -extensions v3_req  -subj "/C=US/ST=California/L=Mountain View/O=Google/OU=Enterprise/CN=client"
-openssl ca -config openssl.conf -days 400 -notext  -in client.csr   -out client.crt
-```
-
-You'll be left with the following:
-
-* Server
-  - `server.crt`: x509 public certificate
-  - `server.pem`: RSA public key
-  - `server.key`: private key
-
-* Client
-  - `client.crt`: x509 public key
-  - `client.key`: private key
-
-Copy these files to the root folder of this repo.
+Alternatively, you can use the certs/keys under the `certs/` folder as a reference
 
 ### Create KMS KeyRing and ImportJob
 
@@ -147,12 +117,12 @@ https://cloud.google.com/kms/docs/importing-a-key
 ```bash
 export LOCATION=us-central1
 export KEYRING_NAME=mycacerts
-export IMPORT_JOB=certimporter
+export IMPORT_JOB=kmskeyimporter
 export VERSION=1
 
 gcloud kms keyrings create $KEYRING_NAME --location $LOCATION
 
-gcloud beta kms import-jobs create $IMPORT_JOB \
+gcloud kms import-jobs create $IMPORT_JOB \
   --location $LOCATION \
   --keyring $KEYRING_NAME \
   --import-method rsa-oaep-3072-sha1-aes-256 \
@@ -160,12 +130,12 @@ gcloud beta kms import-jobs create $IMPORT_JOB \
 ```
 ### Create import keys on Cloud console
 
-On the cloud console, navigate to the KMS key cited above and simply define the `server` and `client` as shown below.  You do _not_ need to import anything yet; we will format and use gcloud shortly. 
+On the cloud console, navigate to the KMS key cited above and simply define the `serverpss` and `clientpss` as shown below.  You do _not_ need to import anything yet; we will format and use gcloud shortly. 
 
 Remember while defining the keys, specify
 
 * `Asymmetric Sign`:  
-* `2048 bit RSA key PKCS#1 v1.5 padding - SHA256 Digest`
+* `2048 bit RSA key PSS padding - SHA256 Digest`
 * Select _"Import Key Material"_
 * Click the "Create" button but _do not_ import anything (we ill do that later in the next step; simply navigate back)
 
@@ -178,23 +148,24 @@ Remember while defining the keys, specify
 We need to [format the keys](https://cloud.google.com/kms/docs/formatting-keys-for-import) for importing into the HSM as described in:
 
 ```bash
-openssl pkcs8 -topk8 -nocrypt -inform PEM -outform DER  -in server.key -out server_formatted.key
-openssl pkcs8 -topk8 -nocrypt -inform PEM -outform DER  -in client.key -out client_formatted.key
+openssl pkcs8 -topk8 -nocrypt -inform PEM -outform DER  -in certs/server.key -out certs/server_formatted.key
+openssl pkcs8 -topk8 -nocrypt -inform PEM -outform DER  -in certs/client.key -out certs/client_formatted.key
 ```
 
 ### Import the keys into the HSM
 
 ```bash
-gcloud beta kms keys versions import --import-job $IMPORT_JOB --location $LOCATION   --keyring $KEYRING_NAME   --key server   --algorithm rsa-sign-pkcs1-2048-sha256  --target-key-file  server_formatted.key
+gcloud  kms keys versions import \
+  --import-job $IMPORT_JOB --location $LOCATION  \
+  --keyring $KEYRING_NAME   --key serverpss \
+  --algorithm rsa-sign-pss-2048-sha256 \
+  --target-key-file  certs/server_formatted.key
 
-gcloud beta kms keys versions import --import-job $IMPORT_JOB --location $LOCATION   --keyring $KEYRING_NAME   --key client   --algorithm rsa-sign-pkcs1-2048-sha256  --target-key-file  client_formatted.key
-```
-
-You may need to install the cryptography package and force gcloud to use the sitepackages
-
-```bash
-pip install --user cryptography
-export CLOUDSDK_PYTHON_SITEPACKAGES=1
+gcloud  kms keys versions import \
+  --import-job $IMPORT_JOB --location $LOCATION  \
+  --keyring $KEYRING_NAME   --key clientpss \
+  --algorithm rsa-sign-pss-2048-sha256 \
+  --target-key-file  certs/client_formatted.key
 ```
 
 You can verify the status of the import job by running.  When the job is completed, you should see `state: ENABLED`
@@ -203,10 +174,23 @@ You can verify the status of the import job by running.  When the job is complet
 gcloud kms keys versions describe $VERSION \
   --location $LOCATION \
   --keyring $KEYRING_NAME \
-  --key server
+  --key serverpss
 ```
 
 >> At this point, you can delete `server.key` and `client.key` private keys as its now save(er) inside KMS.
+
+
+Get the key VERSIONS you just imported.  For me this specific key version i imported is number `1` for the server and client
+
+```bash
+$ gcloud kms keys versions list --location $LOCATION --keyring $KEYRING_NAME --key serverpss
+NAME                                                                                                            STATE
+projects/mineral-minutia-820/locations/us-central1/keyRings/mycacerts/cryptoKeys/serverpss/cryptoKeyVersions/1  ENABLED
+
+$ gcloud kms keys versions list --location $LOCATION --keyring $KEYRING_NAME --key clientpss
+NAME                                                                                                            STATE
+projects/mineral-minutia-820/locations/us-central1/keyRings/mycacerts/cryptoKeys/clientpss/cryptoKeyVersions/1  ENABLED
+```
 
 ### Specify IAM permission on the keys for 
 
@@ -214,7 +198,10 @@ If you are running this tutorial somewhere you  are already authenticated via ap
 
 ### Run mTLS Server
 
-Edit `src/server_kms/main.go` and set the `projectID` const variable.
+Edit `src/server_kms/main.go` and 
+
+set the `projectID` const variable
+set the key version you used (for me its `1`)
 
 ```
 export GOPATH=$GOPATH:`pwd`
@@ -222,12 +209,25 @@ export GOPATH=$GOPATH:`pwd`
 go run src/server_kms/main.go
 ```
 
-You'll need to `go get` all the libraries missing (sorry, i didn't use gomodules)
-  eg: `golang.org/x/oauth2/google google.golang.org/api/cloudkms/v1 github.com/salrashid123/signer/kms`
+
+```
+curl -vvvvv \
+  -H "host: localhost" \
+  --resolve  http.domain.com:8081:127.0.0.1 \
+  --cert certs/client.crt \
+  --key certs/client.key \
+  --cacert certs/tls-ca.crt \
+  https://localhost:8081
+```
+
 
 ### Run mTLS Client
 
-Edit `src/client/main.go` and set the `projectID` const variable.
+Edit `src/client/main.go` and set
+
+set the `projectID` const variable
+set the key version you used (for me its `5`)
+
 
 ```
 export GOPATH=$GOPATH:`pwd`

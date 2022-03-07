@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	projectID = "mineral-minutia-820"
+	projectID = "YOUR_PROJECT_ID"
 )
 
 var ()
@@ -32,27 +32,28 @@ func healthhandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
-	caCert, err := ioutil.ReadFile("CA_crt.pem")
+	caCert, err := ioutil.ReadFile("certs/tls-ca.crt")
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
-	clientCaCert, err := ioutil.ReadFile("CA_crt.pem")
+	clientCaCert, err := ioutil.ReadFile("certs/tls-ca.crt")
 	clientCaCertPool := x509.NewCertPool()
 	clientCaCertPool.AppendCertsFromPEM(clientCaCert)
 
 	r, err := sal.NewKMSCrypto(&sal.KMS{
-		PublicKeyFile: "server.crt",
+		PublicKeyFile: "certs/server.crt",
 		ProjectId:     projectID,
 		LocationId:    "us-central1",
 		KeyRing:       "mycacerts",
 
-		Key:        "server",
-		KeyVersion: "4",
-
+		Key:                "serverpss",
+		KeyVersion:         "2",
+		SignatureAlgorithm: x509.SHA256WithRSAPSS, // required for go 1.15+ TLS
 		ExtTLSConfig: &tls.Config{
 			RootCAs:    caCertPool,
 			ClientCAs:  clientCaCertPool,
 			ClientAuth: tls.RequireAndVerifyClientCert,
+			MaxVersion: tls.VersionTLS12,
 		},
 	})
 	if err != nil {

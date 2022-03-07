@@ -12,28 +12,29 @@ import (
 )
 
 const (
-	projectID = "mineral-minutia-820"
+	projectID = "YOUR_PROJECT_ID"
 )
 
 var ()
 
 func main() {
 
-	caCert, err := ioutil.ReadFile("CA_crt.pem")
+	caCert, err := ioutil.ReadFile("certs/tls-ca.crt")
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
 	r, err := sal.NewKMSCrypto(&sal.KMS{
-		PublicKeyFile: "client.crt",
-		ProjectId:     projectID,
-		LocationId:    "us-central1",
-		KeyRing:       "mycacerts",
-		Key:           "client",
-		KeyVersion:    "4",
-
+		PublicKeyFile:      "certs/client.crt",
+		ProjectId:          projectID,
+		LocationId:         "us-central1",
+		KeyRing:            "mycacerts",
+		Key:                "clientpss",
+		KeyVersion:         "2",
+		SignatureAlgorithm: x509.SHA256WithRSAPSS, // required for go 1.15+ TLS
 		ExtTLSConfig: &tls.Config{
 			RootCAs:    caCertPool,
 			ServerName: "localhost",
+			MaxVersion: tls.VersionTLS12,
 		},
 	})
 	if err != nil {
