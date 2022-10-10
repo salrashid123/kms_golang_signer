@@ -8,32 +8,40 @@ import (
 	"log"
 	"net/http"
 
+	"flag"
+
 	sal "github.com/salrashid123/signer/kms"
 )
 
-const (
-	projectID = "YOUR_PROJECT_ID"
-)
+const ()
 
-var ()
+var (
+	projectID = flag.String("projectID", "", "ProjectID for where the kms key is held")
+)
 
 func main() {
 
-	caCert, err := ioutil.ReadFile("certs/tls-ca.crt")
+	flag.Parse()
+
+	caCert, err := ioutil.ReadFile("../certs/tls-ca.crt")
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
 	r, err := sal.NewKMSCrypto(&sal.KMS{
-		PublicKeyFile:      "certs/client.crt",
-		ProjectId:          projectID,
-		LocationId:         "us-central1",
-		KeyRing:            "mycacerts",
-		Key:                "clientpss",
-		KeyVersion:         "2",
+		ProjectId:          *projectID,
+		PublicKeyFile:      "../certs/client.crt",
+		LocationId:         "global",
+		KeyRing:            "tlskr",
+		Key:                "k1",
+		KeyVersion:         "1",
 		SignatureAlgorithm: x509.SHA256WithRSAPSS, // required for go 1.15+ TLS
 		ExtTLSConfig: &tls.Config{
 			RootCAs:    caCertPool,
-			ServerName: "localhost",
+			ServerName: "server.domain.com",
 			MaxVersion: tls.VersionTLS12,
 		},
 	})

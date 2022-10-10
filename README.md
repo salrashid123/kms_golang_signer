@@ -1,249 +1,162 @@
-
 # mTLS with Google Cloud KMS
 
-A couple weeks back I hacked golang's [crypto.Signer](https://golang.org/pkg/crypto/#Signer) and [crypto.Decrypter](https://golang.org/pkg/crypto/#Decrypter) interface to the `Trusted Platform Module (TPM)` go interface i've been working with lately.  While working with that, I knew you can seal a key to a TPM and make it sign for some data just like with KMS...I knew TLS connections primarily use signatures during the exchange so i thought: _is there anyway to add a signer interface to [go-tpm](https://github.com/google/go-tpm) such that i can use the key in the TPM with SSL_?  Yep, that involves having something implement the `crypto.Signer` interface (mostly).
+This article demonstrates how you can use a [crypto.Signer](https://github.com/salrashid123/signer) implementation i wrote some years ago to make an mTLS connection using a private key that exists only in GCP KMS.
 
-The implementation i have for that is just a hack [here](https://github.com/salrashid123/signer)/
+Basically, you will create a KMS key that is enabled for `RSA-PSS` Signing. 
 
-So...coming back to KMS..this repo is an extension of that idea where you can run an HTTPs server and client where the private keys are save in KMS.
+We will then issue a `Certificate Signing Request (csr)` using the private key to sign the request.
 
-(yes, i know, latency, practicality etc but this is (at the moment) for amusement so..)
+From there, we have a local Certificate Authority that will issue the `x509` cert for the client.
 
-At a high level, you use your `CA` (wherever it is), to define  a set of keypairs for an HTTPS `server` and `client`.  You then embed the certs into [Cloud KMS](https://cloud.google.com/kms/) with just RSA sign capability and then restrict access to those keys via IAM.
+We will then run an https server that requires client certificates issued by that same CA
 
-The HTTPS sever has credentials to access the server key to only Sign.  The client has credentials to the client key to only sign.  If you define a golang `TLSConfig` provider that implements the `crypto.Singer` capability, the standard golang `net/http` module will delegate the crypto operations to your implementation. In ourcase the `Sign()` request coming for the go library inturn just makes a cloud KMS api call...thats it.
-
-You ofcourse don't need to run mTLS here..you can just use KMS for one direction of the session.
-
->> Note: if it wasn't clear: this repo is _not_ supported by Google
-
-### crypto.Signer, crypto.Decrypter Implementation for KMS
-
-At the heart of all this is the wrapper implementation i hacked here that wraps KMS api calls with the `Signer`
-
-- [https://github.com/salrashid123/signer/blob/master/kms/kms.go](https://github.com/salrashid123/signer/blob/master/kms/kms.go)
-
-
->> IMPORTANT: you must use at **MOST** go1.13 since versions beyond that uses RSA-PSS (ref [32425](https://github.com/golang/go/issues/32425)) and KMS only support RSA
-
-So a sample sever for TLS looks prettymuch like what you'd expect anyway
-
-```golang
-package main
-
-import (
-	"crypto/x509"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
-	sal "github.com/salrashid123/signer/kms"
-	"crypto/tls"
-	"golang.org/x/net/http2"
-)
-
-const (
-	projectID = "foo"
-)
-
-var ()
-
-func fronthandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("/ called")
-	fmt.Fprint(w, "ok")
-}
-
-
-func main() {
-
-	caCert, err := ioutil.ReadFile("certs/tls-ca.pem")
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
-
-	r, err := sal.NewKMSCrypto(&sal.KMS{
-		PublicKeyFile: "certs/client.crt",
-		ProjectId:     projectID,
-		LocationId:    "us-central1",
-		KeyRing:       "mycacerts",
-		Key:           "client",
-		KeyVersion:    "1",
-		ExtTLSConfig: &tls.Config{
-			RootCAs:    caCertPool,
-		},	
-	})
-	if err != nil {
-		log.Fatalf(err)
-	}
-
-	http.HandleFunc("/", fronthandler)
-
-	var server *http.Server
-	server = &http.Server{
-		Addr:      ":8081",
-		TLSConfig: r.TLSConfig(),
-	}
-	http2.ConfigureServer(server, &http2.Server{})
-	log.Println("Starting Server..")
-	err = server.ListenAndServeTLS("", "")
-	log.Fatalf("Unable to start Server %v", err)
-}
-```
-
-Notes:
-- Yes, i didn't implement all the parameters for the `TlSConfig`...but its enough to make it work for now
-- Yes, i should not create new KMS clients everytime (don't be lazy, sal)
-- Yes, why do this anyway? (see the bottom of the repo)
+The client will use the client `x509` and KMS private key reference to establish an mTLS connection to the server.
 
 ---
 
-Anyway, if you're still interested: 
-
-### Generate local CA
-
-First we need to generate a CA an certificates we want to import.  The following describes the basic flow derived from a prior article [here](https://github.com/salrashid123/ca_scratchpad) to create a CA, a set of server and client certificates.  We are defining the server cert to have 'CN=localhost` but you are free to define wherever you with to host the service
-
-NOTE, i used `Signature Algorithm: sha256WithRSAEncryption` for my CA and certs
+>> Note: if it wasn't clear: this repo is _not_ supported by Google
 
 
+For more information, see 
 
-Alternatively, you can use the certs/keys under the `certs/` folder as a reference
+* [crypto.Signer, implementations for Google Cloud KMS and Trusted Platform Modules](https://github.com/salrashid123/signer)
+* [mTLS with PKCS11](https://github.com/salrashid123/mtls_pkcs11)
+* [mTLS with TPM bound private key](https://github.com/salrashid123/go_tpm_https_embed)
 
-### Create KMS KeyRing and ImportJob
+---
 
-First step is to setup the keyring itself:
-
-https://cloud.google.com/kms/docs/importing-a-key
+#### Create KMS Key
+First create a KMS key
 
 ```bash
-export LOCATION=us-central1
-export KEYRING_NAME=mycacerts
-export IMPORT_JOB=kmskeyimporter
-export VERSION=1
+export GCLOUD_USER=`gcloud config get-value core/account`
 
-gcloud kms keyrings create $KEYRING_NAME --location $LOCATION
+gcloud kms keyrings create tlskr --location=global
 
-gcloud kms import-jobs create $IMPORT_JOB \
-  --location $LOCATION \
-  --keyring $KEYRING_NAME \
-  --import-method rsa-oaep-3072-sha1-aes-256 \
-  --protection-level hsm
+gcloud kms keys create k1 --keyring=tlskr \
+   --location=global --purpose=asymmetric-signing \
+   --default-algorithm=rsa-sign-pss-2048-sha256
+
+gcloud kms keys add-iam-policy-binding k1  \
+     --keyring=tlskr --location=global   \
+	   --member=user:$GCLOUD_USER  --role=roles/cloudkms.signer
+
+gcloud kms keys add-iam-policy-binding k1  \
+     --keyring=tlskr --location=global   \
+	   --member=user:$GCLOUD_USER  --role=roles/cloudkms.viewer
 ```
-### Create import keys on Cloud console
 
-On the cloud console, navigate to the KMS key cited above and simply define the `serverpss` and `clientpss` as shown below.  You do _not_ need to import anything yet; we will format and use gcloud shortly. 
-
-Remember while defining the keys, specify
-
-* `Asymmetric Sign`:  
-* `2048 bit RSA key PSS padding - SHA256 Digest`
-* Select _"Import Key Material"_
-* Click the "Create" button but _do not_ import anything (we ill do that later in the next step; simply navigate back)
-
-![images/server.png](images/server.png)
-
-![images/client.png](images/client.png)
-
-### Format private keys for import
-
-We need to [format the keys](https://cloud.google.com/kms/docs/formatting-keys-for-import) for importing into the HSM as described in:
+![images/tlskr.png](images/tlskr.png)
 
 ```bash
-openssl pkcs8 -topk8 -nocrypt -inform PEM -outform DER  -in certs/server.key -out certs/server_formatted.key
-openssl pkcs8 -topk8 -nocrypt -inform PEM -outform DER  -in certs/client.key -out certs/client_formatted.key
+$ gcloud kms keys list --keyring=tlskr --location=global
+NAME                                                                        PURPOSE          ALGORITHM                 PROTECTION_LEVEL 
+projects/PROJECT/locations/global/keyRings/tlskr/cryptoKeys/k1  ASYMMETRIC_SIGN  RSA_SIGN_PSS_2048_SHA256  SOFTWARE
 ```
 
-### Import the keys into the HSM
+recall the public key (your's will ofcourse be different)
 
 ```bash
-gcloud  kms keys versions import \
-  --import-job $IMPORT_JOB --location $LOCATION  \
-  --keyring $KEYRING_NAME   --key serverpss \
-  --algorithm rsa-sign-pss-2048-sha256 \
-  --target-key-file  certs/server_formatted.key
-
-gcloud  kms keys versions import \
-  --import-job $IMPORT_JOB --location $LOCATION  \
-  --keyring $KEYRING_NAME   --key clientpss \
-  --algorithm rsa-sign-pss-2048-sha256 \
-  --target-key-file  certs/client_formatted.key
+$ gcloud kms keys versions get-public-key 1    --key=k1 --keyring=tlskr   --location=global
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzHdXnqlUgvFlTaAXBMAU
+cxi74Vfb0tA7Pn/356xIqB820t6bSRmCutPOnHUYz02piNFJP2Vx+HKiqmT3S7jy
+Yv6xPWxGfOHmKbwl8UkMzOdPtTyMLk11TSGA0Wgar9e/chU1UxH1Rk9sQ5CG8xBK
+7ToGGIn0fxBvyWeAucsgn3PONuuqrKsTfW/hckyk866oI8e8C7+XWrbtM6gBt4/U
+Z2OiF/QfdoXB4oBFLi+NHkLdYBk0pM6R/xaXCGUchLQkfw6MdD68MvfNVSY7YIuy
+g5ZIrWFQzSptCtn4mF9CLooRK/2d360d9hsCUybCTRAw6D8Ra27aVS5+Vl+lajxu
+JQIDAQAB
+-----END PUBLIC KEY-----
 ```
 
-You can verify the status of the import job by running.  When the job is completed, you should see `state: ENABLED`
+### Create a CSR
+
+now create a CSR:
 
 ```bash
-gcloud kms keys versions describe $VERSION \
-  --location $LOCATION \
-  --keyring $KEYRING_NAME \
-  --key serverpss
+export PROJECT_ID=`gcloud config get-value core/project`
+
+cd csr/
+
+go run main.go --projectID=$PROJECT_ID --cn client.domain.com --filename ../certs/client.csr
 ```
 
->> At this point, you can delete `server.key` and `client.key` private keys as its now save(er) inside KMS.
+### Sign CSR
 
+Then initialize the CA using the certificate authority here (you can create you own CA [here](https://github.com/salrashid123/ca_scratchpad)).
 
-Get the key VERSIONS you just imported.  For me this specific key version i imported is number `1` for the server and client
 
 ```bash
-$ gcloud kms keys versions list --location $LOCATION --keyring $KEYRING_NAME --key serverpss
-NAME                                                                                                            STATE
-projects/mineral-minutia-820/locations/us-central1/keyRings/mycacerts/cryptoKeys/serverpss/cryptoKeyVersions/1  ENABLED
+cd certs/
 
-$ gcloud kms keys versions list --location $LOCATION --keyring $KEYRING_NAME --key clientpss
-NAME                                                                                                            STATE
-projects/mineral-minutia-820/locations/us-central1/keyRings/mycacerts/cryptoKeys/clientpss/cryptoKeyVersions/1  ENABLED
+rm -rf /tmp/kmsca
+mkdir -p /tmp/kmsca
+
+cp /dev/null /tmp/kmsca/tls-ca.db
+cp /dev/null /tmp/kmsca/tls-ca.db.attr
+
+echo 01 > /tmp/kmsca/tls-ca.crt.srl
+echo 01 > /tmp/kmsca/tls-ca.crl.srl
+
+
+openssl ca \
+    -config tls-ca.conf \
+    -in client.csr \
+    -out client.crt \
+    -extensions client_ext
 ```
 
-### Specify IAM permission on the keys for 
+You can also confirm the certificate has the same public key from KMS
 
-If you are running this tutorial somewhere you  are already authenticated via application default credentials, you should already have IAM permissions inherited. If not, for each key you've just defined, assign the `Cloud KMS CryptoKey Signer` role to the account that will run the client and server
-
-### Run mTLS Server
-
-Edit `src/server_kms/main.go` and 
-
-set the `projectID` const variable
-set the key version you used (for me its `1`)
-
-```
-export GOPATH=$GOPATH:`pwd`
-
-go run src/server_kms/main.go
+```bash
+$ openssl x509 -pubkey -noout -in client.crt 
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzHdXnqlUgvFlTaAXBMAU
+cxi74Vfb0tA7Pn/356xIqB820t6bSRmCutPOnHUYz02piNFJP2Vx+HKiqmT3S7jy
+Yv6xPWxGfOHmKbwl8UkMzOdPtTyMLk11TSGA0Wgar9e/chU1UxH1Rk9sQ5CG8xBK
+7ToGGIn0fxBvyWeAucsgn3PONuuqrKsTfW/hckyk866oI8e8C7+XWrbtM6gBt4/U
+Z2OiF/QfdoXB4oBFLi+NHkLdYBk0pM6R/xaXCGUchLQkfw6MdD68MvfNVSY7YIuy
+g5ZIrWFQzSptCtn4mF9CLooRK/2d360d9hsCUybCTRAw6D8Ra27aVS5+Vl+lajxu
+JQIDAQAB
+-----END PUBLIC KEY-----
 ```
 
+#### Run Server
 
-```
-curl -vvvvv \
-  -H "host: localhost" \
-  --resolve  http.domain.com:8081:127.0.0.1 \
-  --cert certs/client.crt \
-  --key certs/client.key \
-  --cacert certs/tls-ca.crt \
-  https://localhost:8081
+Now run the TLS Server
+
+```bash
+cd example/
+go run server/main.go
 ```
 
+### Run Client
 
-### Run mTLS Client
-
-Edit `src/client/main.go` and set
-
-set the `projectID` const variable
-set the key version you used (for me its `5`)
-
-
-```
-export GOPATH=$GOPATH:`pwd`
-
-go run src/client/main.go
+```bash
+cd example
+go run client/client.go --projectID $PROJECT_ID
 ```
 
-What you should see is a simple ok...but what that shows is mTLS between the client and server where the private keys used to make the mTLS connection is hosted on cloud KMS...
+Once you connect, the server will show the peer certificate's public key it recieved....and surprise, its the one that matches our KMS public key
 
-
+```
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzHdXnqlUgvFlTaAXBMAU
+cxi74Vfb0tA7Pn/356xIqB820t6bSRmCutPOnHUYz02piNFJP2Vx+HKiqmT3S7jy
+Yv6xPWxGfOHmKbwl8UkMzOdPtTyMLk11TSGA0Wgar9e/chU1UxH1Rk9sQ5CG8xBK
+7ToGGIn0fxBvyWeAucsgn3PONuuqrKsTfW/hckyk866oI8e8C7+XWrbtM6gBt4/U
+Z2OiF/QfdoXB4oBFLi+NHkLdYBk0pM6R/xaXCGUchLQkfw6MdD68MvfNVSY7YIuy
+g5ZIrWFQzSptCtn4mF9CLooRK/2d360d9hsCUybCTRAw6D8Ra27aVS5+Vl+lajxu
+JQIDAQAB
+-----END PUBLIC KEY-----
+```
 
 ## AuditLogs
 
-If you enabled auditlogs for KMS, you will see both the client and server request a sign API request on either side to establish the mTLS connection
+If you enabled auditlogs for KMS, you will see both the csr and client request a sign API request on either side to establish the mTLS connection
 
 ![images/audit_log.png](images/audit_log.png)
+
 
 ## Issues, issues
 
@@ -251,67 +164,6 @@ If you enabled auditlogs for KMS, you will see both the client and server reques
 
 Well...yeah, there is some and thats one of the biggest reasons this is a bit academic.  I ran this setup a couple times and saw that the API calls from my laptop to establish just a TLS connection using one KMS key added on about `150ms`...This would be faster on a compute engine or on GKE on cloud though...but its still a lot.
 
-#### Authentication
+#### Costs
 
-The permission to even access the KMS keys to do anything requires bootstrapping `Application Default Credentials`...which means the system will need some context to do anything.  The example here used my own user account but you can use a serviceAccount credential, GCE Metadata server...or later on what is i've been working on here is the Trusted Platform Module that saves the credentials.
-
-- [TPM2-TSS-Engine hello world and Google Cloud Authentication](https://github.com/salrashid123/tpm2_evp_sign_decrypt)
-- [TPM crypto.Signer](https://github.com/salrashid123/misc/blob/master/tpm/tpm.go)
-- [Trusted Platform Module (TPM) recipes with tpm2_tools and go-tpm](https://github.com/salrashid123/tpm2)
-
-#### Why do all this anyway?
-
-I'm not sure at the moment...
-
----
-
-
-## Appendix
-
-### Using crypto.Decrypter
-
-If you want to test crypto.Decryptor, assign `Cloud KMS CryptoKey Decrypter` role and uncomment.  You will need to create a _new_ keypair using your CA (call it `decrypter`) and follow the procedure above.  The distiction here is that while you define the key in KMS, st it to Decrypt (not sign)
-
-```golang
-
-	publicKeyFile := "decrypter.pem"
-	publicPEM, err := ioutil.ReadFile(publicKeyFile)
-	if err != nil {
-		log.Fatalf("Unable to read keys %v", err)
-	}
-	pubKeyBlock, _ := pem.Decode((publicPEM))
-	ifc, err := x509.ParsePKIXPublicKey(pubKeyBlock.Bytes)
-	if err != nil {
-		log.Fatal(err)
-	}
-	pkey, ok := ifc.(*rsa.PublicKey)
-	if !ok {
-		log.Fatal("Unable to extract PublicKey")
-	}
-	hash := sha256.New()
-	msg := []byte("foo")
-	ciphertext, err := rsa.EncryptOAEP(hash, rand.Reader, pkey, msg, nil)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Printf("Encrypted Data: %v", base64.StdEncoding.EncodeToString(ciphertext))
-
-	r, err := sal.NewKMSCrypto(&sal.KMS{
-		ProjectId:  "mineral-minutia-820",
-		LocationId: "us-central1",
-		KeyRing:    "mycacerts",
-		Key:        "decrypter",
-		KeyVersion: "1",
-	})
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	plaintext, err := r.Decrypt(rand.Reader, ciphertext, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("Decrypted Data: %v ", string(plaintext))
-  
-```
+yah, that too..you're making an api call for each mtls connection..
