@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 
 	"crypto/tls"
 
@@ -43,7 +44,7 @@ func fronthandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
-	caCert, err := ioutil.ReadFile("../certs/tls-ca.crt")
+	caCert, err := os.ReadFile("../certs/tls-ca.crt")
 	if err != nil {
 		panic(err)
 	}

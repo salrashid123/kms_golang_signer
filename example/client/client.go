@@ -4,9 +4,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
+	"os"
 
 	"flag"
 
@@ -23,7 +24,7 @@ func main() {
 
 	flag.Parse()
 
-	caCert, err := ioutil.ReadFile("../certs/tls-ca.crt")
+	caCert, err := os.ReadFile("../certs/tls-ca.crt")
 	if err != nil {
 		log.Println(err)
 		return
@@ -39,11 +40,6 @@ func main() {
 		Key:                "k1",
 		KeyVersion:         "1",
 		SignatureAlgorithm: x509.SHA256WithRSAPSS, // required for go 1.15+ TLS
-		ExtTLSConfig: &tls.Config{
-			RootCAs:    caCertPool,
-			ServerName: "server.domain.com",
-			MaxVersion: tls.VersionTLS12,
-		},
 	})
 	if err != nil {
 		log.Println(err)
@@ -51,7 +47,13 @@ func main() {
 	}
 
 	tr := &http.Transport{
-		TLSClientConfig: r.TLSConfig(),
+		//TLSClientConfig: r.TLSConfig(),
+		TLSClientConfig: &tls.Config{
+			Certificates: []tls.Certificate{r.TLSCertificate()},
+			RootCAs:      caCertPool,
+			ServerName:   "server.domain.com",
+			MaxVersion:   tls.VersionTLS12,
+		},
 	}
 	client := &http.Client{Transport: tr}
 
@@ -61,13 +63,13 @@ func main() {
 		return
 	}
 
-	htmlData, err := ioutil.ReadAll(resp.Body)
+	htmlData, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	defer resp.Body.Close()
 	fmt.Printf("%v\n", resp.Status)
-	fmt.Printf(string(htmlData))
+	fmt.Println(string(htmlData))
 
 }
