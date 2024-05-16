@@ -4,7 +4,7 @@ go 1.21
 
 toolchain go1.22.2
 
-require github.com/salrashid123/signer/kms v0.0.0-20240506111550-fb6b5341ecb9
+require github.com/salrashid123/signer/kms v0.0.0-20240516111737-897bb872f7f0
 
 require (
 	cloud.google.com/go v0.112.2 // indirect

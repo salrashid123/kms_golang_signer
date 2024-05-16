@@ -46,10 +46,15 @@ func main() {
 		return
 	}
 
+	tcrt, err := r.TLSCertificate()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	tr := &http.Transport{
-		//TLSClientConfig: r.TLSConfig(),
 		TLSClientConfig: &tls.Config{
-			Certificates: []tls.Certificate{r.TLSCertificate()},
+			Certificates: []tls.Certificate{tcrt},
 			RootCAs:      caCertPool,
 			ServerName:   "server.domain.com",
 			MaxVersion:   tls.VersionTLS12,
