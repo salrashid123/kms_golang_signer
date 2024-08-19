@@ -2,7 +2,7 @@
 
 This article demonstrates how you can use a [crypto.Signer](https://github.com/salrashid123/signer) implementation i wrote some years ago to make an mTLS connection using a private key that exists only in GCP KMS.
 
-Basically, you will create a KMS key that is enabled for `RSA-PSS` Signing. 
+Basically, you will create a KMS key that is enabled for `RSA-PSS` or `ECDSA` Signing. 
 
 We will then issue a `Certificate Signing Request (csr)` using the private key to sign the request.
 
@@ -150,6 +150,31 @@ g5ZIrWFQzSptCtn4mF9CLooRK/2d360d9hsCUybCTRAw6D8Ra27aVS5+Vl+lajxu
 JQIDAQAB
 -----END PUBLIC KEY-----
 ```
+
+## ECDSA Keys
+
+for ecc keys, crate `k2`
+
+```bash
+gcloud kms keys create k2 --keyring=tlskr \
+   --location=global --purpose=asymmetric-signing    --default-algorithm=ec-sign-p256-sha256
+
+gcloud kms keys add-iam-policy-binding k2  \
+        --keyring=tlskr --location=global  \
+        --member=user:$GCLOUD_USER  --role=roles/cloudkms.signer
+
+gcloud kms keys add-iam-policy-binding k2 \
+        --keyring=tlskr --location=global  \
+        --member=user:$GCLOUD_USER  --role=roles/cloudkms.viewer
+
+gcloud kms keys list --keyring=tlskr --location=global
+NAME                                                                  PURPOSE          ALGORITHM                 PROTECTION_LEVEL  LABELS  PRIMARY_ID  PRIMARY_STATE
+projects/srashid-test2/locations/global/keyRings/tlskr/cryptoKeys/k1  ASYMMETRIC_SIGN  RSA_SIGN_PSS_2048_SHA256  SOFTWARE
+projects/srashid-test2/locations/global/keyRings/tlskr/cryptoKeys/k2  ASYMMETRIC_SIGN  EC_SIGN_P256_SHA256       SOFTWARE
+```
+
+Then edit `csr/main.go` and `example/client/client.go` and uncomment the ecdsa signing section
+
 
 ## AuditLogs
 

@@ -35,9 +35,9 @@ func main() {
 		ProjectId:          *projectID,
 		LocationId:         "global",
 		KeyRing:            "tlskr",
-		Key:                "k1",
+		Key:                "k1", // "k2"
 		KeyVersion:         "1",
-		SignatureAlgorithm: x509.SHA256WithRSAPSS,
+		SignatureAlgorithm: x509.SHA256WithRSAPSS, // x509.ECDSAWithSHA256,
 	})
 
 	if err != nil {
@@ -54,7 +54,7 @@ func createCSR(t crypto.Signer) error {
 	log.Printf("Creating CSR")
 
 	var csrtemplate = x509.CertificateRequest{
-		SignatureAlgorithm: x509.SHA256WithRSAPSS,
+		SignatureAlgorithm: x509.SHA256WithRSAPSS, // x509.ECDSAWithSHA256,
 		Subject: pkix.Name{
 			Organization:       []string{"Acme Co"},
 			OrganizationalUnit: []string{"Enterprise"},

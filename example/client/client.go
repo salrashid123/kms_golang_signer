@@ -37,9 +37,9 @@ func main() {
 		PublicKeyFile:      "../certs/client.crt",
 		LocationId:         "global",
 		KeyRing:            "tlskr",
-		Key:                "k1",
+		Key:                "k1", // "k2",
 		KeyVersion:         "1",
-		SignatureAlgorithm: x509.SHA256WithRSAPSS, // required for go 1.15+ TLS
+		SignatureAlgorithm: x509.SHA256WithRSAPSS, // x509.ECDSAWithSHA256,
 	})
 	if err != nil {
 		log.Println(err)
