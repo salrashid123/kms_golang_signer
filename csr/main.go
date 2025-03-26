@@ -16,7 +16,7 @@ import (
 
 	"os"
 
-	salkms "github.com/salrashid123/signer/kms"
+	salkms "github.com/salrashid123/kms_golang_signer"
 )
 
 const ()

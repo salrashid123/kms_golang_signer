@@ -1,4 +1,5 @@
-# mTLS with Google Cloud KMS
+# crypto.Signer, implementations for GCP KMS
+
 
 This article demonstrates how you can use a [crypto.Signer](https://github.com/salrashid123/signer) implementation i wrote some years ago to make an mTLS connection using a private key that exists only in GCP KMS.
 

@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.22.2
 
 require (
-	github.com/salrashid123/signer/kms v0.0.0-20240607164123-b64bf0a3f447
+	github.com/salrashid123/kms_golang_signer v0.0.0
 	golang.org/x/net v0.26.0
 )
 
@@ -44,3 +44,5 @@ require (
 	google.golang.org/grpc v1.64.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 )
+
+replace github.com/salrashid123/kms_golang_signer => ../

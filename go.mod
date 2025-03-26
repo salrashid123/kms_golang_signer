@@ -1,10 +1,10 @@
-module main
+module github.com/salrashid123/kms_golang_signer
 
 go 1.21
 
 toolchain go1.22.2
 
-require github.com/salrashid123/kms_golang_signer v0.0.0
+require cloud.google.com/go/kms v1.17.1
 
 require (
 	cloud.google.com/go v0.114.0 // indirect
@@ -12,7 +12,6 @@ require (
 	cloud.google.com/go/auth/oauth2adapt v0.2.2 // indirect
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	cloud.google.com/go/iam v1.1.8 // indirect
-	cloud.google.com/go/kms v1.17.1 // indirect
 	cloud.google.com/go/longrunning v0.5.7 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
@@ -42,5 +41,3 @@ require (
 	google.golang.org/grpc v1.64.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 )
-
-replace github.com/salrashid123/kms_golang_signer => ../

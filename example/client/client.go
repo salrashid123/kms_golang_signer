@@ -11,7 +11,7 @@ import (
 
 	"flag"
 
-	sal "github.com/salrashid123/signer/kms"
+	sal "github.com/salrashid123/kms_golang_signer"
 )
 
 const ()
