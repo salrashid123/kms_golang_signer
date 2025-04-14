@@ -44,14 +44,14 @@ func fronthandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
-	caCert, err := os.ReadFile("../certs/tls-ca.crt")
+	caCert, err := os.ReadFile("../certs/root-ca.crt")
 	if err != nil {
 		panic(err)
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
-	clientCaCert, err := ioutil.ReadFile("../certs/tls-ca.crt")
+	clientCaCert, err := ioutil.ReadFile("../certs/root-ca.crt")
 	if err != nil {
 		panic(err)
 	}

@@ -33,9 +33,9 @@ func main() {
 
 	r, err := salkms.NewKMSCrypto(&salkms.KMS{
 		ProjectId:          *projectID,
-		LocationId:         "global",
-		KeyRing:            "tlskr",
-		Key:                "k1", // "k2"
+		LocationId:         "us-central1",
+		KeyRing:            "tkr1",
+		Key:                "rsapss1", // "rsa1"
 		KeyVersion:         "1",
 		SignatureAlgorithm: x509.SHA256WithRSAPSS, // x509.ECDSAWithSHA256,
 	})
@@ -56,10 +56,8 @@ func createCSR(t crypto.Signer) error {
 	var csrtemplate = x509.CertificateRequest{
 		SignatureAlgorithm: x509.SHA256WithRSAPSS, // x509.ECDSAWithSHA256,
 		Subject: pkix.Name{
-			Organization:       []string{"Acme Co"},
+			Organization:       []string{"Google"},
 			OrganizationalUnit: []string{"Enterprise"},
-			Locality:           []string{"Mountain View"},
-			Province:           []string{"California"},
 			Country:            []string{"US"},
 			CommonName:         *cn,
 		},

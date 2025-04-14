@@ -24,7 +24,7 @@ func main() {
 
 	flag.Parse()
 
-	caCert, err := os.ReadFile("../certs/tls-ca.crt")
+	caCert, err := os.ReadFile("../certs/root-ca.crt")
 	if err != nil {
 		log.Println(err)
 		return
@@ -35,9 +35,9 @@ func main() {
 	r, err := sal.NewKMSCrypto(&sal.KMS{
 		ProjectId:          *projectID,
 		PublicKeyFile:      "../certs/client.crt",
-		LocationId:         "global",
-		KeyRing:            "tlskr",
-		Key:                "k1", // "k2",
+		LocationId:         "us-central1",
+		KeyRing:            "tkr1",
+		Key:                "rsapss1", // "rsa1",
 		KeyVersion:         "1",
 		SignatureAlgorithm: x509.SHA256WithRSAPSS, // x509.ECDSAWithSHA256,
 	})

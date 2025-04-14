@@ -26,53 +26,88 @@ For more information, see
 
 ---
 
-#### Create KMS Key
+#### Create KMS Keys
+
 First create a KMS key
 
 ```bash
 export GCLOUD_USER=`gcloud config get-value core/account`
 
-gcloud kms keyrings create tlskr --location=global
+gcloud kms keyrings create tkr1 --location=us-central1
 
-gcloud kms keys create k1 --keyring=tlskr \
-   --location=global --purpose=asymmetric-signing \
-   --default-algorithm=rsa-sign-pss-2048-sha256
+## rsa ssa
+gcloud kms keys create rsa1 --keyring=tkr1 \
+   --location=us-central1 --purpose=asymmetric-signing \
+   --default-algorithm=rsa-sign-pkcs1-2048-sha256
 
-gcloud kms keys add-iam-policy-binding k1  \
-     --keyring=tlskr --location=global   \
+gcloud kms keys add-iam-policy-binding rsa1  \
+     --keyring=tkr1 --location=us-central1   \
 	   --member=user:$GCLOUD_USER  --role=roles/cloudkms.signer
 
-gcloud kms keys add-iam-policy-binding k1  \
-     --keyring=tlskr --location=global   \
+gcloud kms keys add-iam-policy-binding rsa1  \
+     --keyring=tkr1 --location=us-central1   \
 	   --member=user:$GCLOUD_USER  --role=roles/cloudkms.viewer
-```
 
+## rsa pss
+gcloud kms keys create rsapss1 --keyring=tkr1 \
+   --location=us-central1 --purpose=asymmetric-signing \
+   --default-algorithm=rsa-sign-pss-2048-sha256
+
+gcloud kms keys add-iam-policy-binding rsapss1  \
+     --keyring=tkr1 --location=us-central1   \
+	   --member=user:$GCLOUD_USER  --role=roles/cloudkms.signer
+
+gcloud kms keys add-iam-policy-binding rsapss1  \
+     --keyring=tkr1 --location=us-central1   \
+	   --member=user:$GCLOUD_USER  --role=roles/cloudkms.viewer
+
+## ECDSA
+
+gcloud kms keys create ecc1 --keyring=tkr1 \
+   --location=us-central1 --purpose=asymmetric-signing    --default-algorithm=ec-sign-p256-sha256
+
+gcloud kms keys add-iam-policy-binding ecc1  \
+        --keyring=tkr1 --location=us-central1  \
+        --member=user:$GCLOUD_USER  --role=roles/cloudkms.signer
+
+gcloud kms keys add-iam-policy-binding ecc1 \
+        --keyring=tkr1 --location=us-central1  \
+        --member=user:$GCLOUD_USER  --role=roles/cloudkms.viewer
+
+```
 ![images/tlskr.png](images/tlskr.png)
 
 ```bash
-$ gcloud kms keys list --keyring=tlskr --location=global
-NAME                                                                        PURPOSE          ALGORITHM                 PROTECTION_LEVEL 
-projects/PROJECT/locations/global/keyRings/tlskr/cryptoKeys/k1  ASYMMETRIC_SIGN  RSA_SIGN_PSS_2048_SHA256  SOFTWARE
+$ gcloud kms keys list --keyring=tkr1 --location=us-central1
+
+NAME                                                                      PURPOSE          ALGORITHM                   PROTECTION_LEVEL  LABELS  PRIMARY_ID  PRIMARY_STATE
+projects/core-eso/locations/us-central1/keyRings/tkr1/cryptoKeys/ecc1     ASYMMETRIC_SIGN  EC_SIGN_P256_SHA256         SOFTWARE
+projects/core-eso/locations/us-central1/keyRings/tkr1/cryptoKeys/mldsa1   ASYMMETRIC_SIGN  PQ_SIGN_ML_DSA_65           SOFTWARE
+projects/core-eso/locations/us-central1/keyRings/tkr1/cryptoKeys/rsa1     ASYMMETRIC_SIGN  RSA_SIGN_PKCS1_2048_SHA256  SOFTWARE
+projects/core-eso/locations/us-central1/keyRings/tkr1/cryptoKeys/rsapss1  ASYMMETRIC_SIGN  RSA_SIGN_PSS_2048_SHA256    SOFTWARE
 ```
 
 recall the public key (your's will ofcourse be different)
 
 ```bash
-$ gcloud kms keys versions get-public-key 1    --key=k1 --keyring=tlskr   --location=global
+$ gcloud kms keys versions get-public-key 1    --key=rsapss1 --keyring=tkr1   --location=us-central1
 -----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzHdXnqlUgvFlTaAXBMAU
-cxi74Vfb0tA7Pn/356xIqB820t6bSRmCutPOnHUYz02piNFJP2Vx+HKiqmT3S7jy
-Yv6xPWxGfOHmKbwl8UkMzOdPtTyMLk11TSGA0Wgar9e/chU1UxH1Rk9sQ5CG8xBK
-7ToGGIn0fxBvyWeAucsgn3PONuuqrKsTfW/hckyk866oI8e8C7+XWrbtM6gBt4/U
-Z2OiF/QfdoXB4oBFLi+NHkLdYBk0pM6R/xaXCGUchLQkfw6MdD68MvfNVSY7YIuy
-g5ZIrWFQzSptCtn4mF9CLooRK/2d360d9hsCUybCTRAw6D8Ra27aVS5+Vl+lajxu
-JQIDAQAB
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx/qz+6n5QBneTLdTjauM
+lvVPmdfKh0Nd4F1VmXJQzv0BhhZC0yO4rIE43eMorZfzKxPaHYWfCL+UowY/+V3B
+/SunFRH7gFyEl0D7Tw6EUI3LOui3UH69EecnF8qNQWtcCe1nNBo0H+xNfAqTbTi6
+3/xAcG6v5gT3nhAWmnlfFCZcgyZRX7Vfy5ghdE+o7jk9mEJuwVX0CtuOI+Wg9+Jj
+f/kFpds3jkGGRbjjjQtiYUfhMW7SyxuItS/g7hCk38m+wEnYromChG9fblc2E3IL
+HZlW6bmIzlC4Rx7eZWQOwi8AyYp+sGScM4E9te+fvC1rTW86tmNuYXpFyi16Bkmy
+0wIDAQAB
 -----END PUBLIC KEY-----
 ```
 
+## TLS 
+
+You can now create a CSR and sign a TLS client certificate against a KMS backed key:
+
 ### Create a CSR
 
-now create a CSR:
 
 ```bash
 export PROJECT_ID=`gcloud config get-value core/project`
@@ -93,15 +128,14 @@ cd certs/
 rm -rf /tmp/kmsca
 mkdir -p /tmp/kmsca
 
-cp /dev/null /tmp/kmsca/tls-ca.db
-cp /dev/null /tmp/kmsca/tls-ca.db.attr
+cp /dev/null /tmp/kmsca/root-ca.db
+cp /dev/null /tmp/kmsca/root-ca.db.attr
 
-echo 01 > /tmp/kmsca/tls-ca.crt.srl
-echo 01 > /tmp/kmsca/tls-ca.crl.srl
-
+echo 01 > /tmp/kmsca/root-ca.crt.srl
+echo 01 > /tmp/kmsca/root-ca.crl.srl
 
 openssl ca \
-    -config tls-ca.conf \
+    -config root-ca.conf \
     -in client.csr \
     -out client.crt \
     -extensions client_ext
@@ -111,14 +145,15 @@ You can also confirm the certificate has the same public key from KMS
 
 ```bash
 $ openssl x509 -pubkey -noout -in client.crt 
+
 -----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzHdXnqlUgvFlTaAXBMAU
-cxi74Vfb0tA7Pn/356xIqB820t6bSRmCutPOnHUYz02piNFJP2Vx+HKiqmT3S7jy
-Yv6xPWxGfOHmKbwl8UkMzOdPtTyMLk11TSGA0Wgar9e/chU1UxH1Rk9sQ5CG8xBK
-7ToGGIn0fxBvyWeAucsgn3PONuuqrKsTfW/hckyk866oI8e8C7+XWrbtM6gBt4/U
-Z2OiF/QfdoXB4oBFLi+NHkLdYBk0pM6R/xaXCGUchLQkfw6MdD68MvfNVSY7YIuy
-g5ZIrWFQzSptCtn4mF9CLooRK/2d360d9hsCUybCTRAw6D8Ra27aVS5+Vl+lajxu
-JQIDAQAB
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx/qz+6n5QBneTLdTjauM
+lvVPmdfKh0Nd4F1VmXJQzv0BhhZC0yO4rIE43eMorZfzKxPaHYWfCL+UowY/+V3B
+/SunFRH7gFyEl0D7Tw6EUI3LOui3UH69EecnF8qNQWtcCe1nNBo0H+xNfAqTbTi6
+3/xAcG6v5gT3nhAWmnlfFCZcgyZRX7Vfy5ghdE+o7jk9mEJuwVX0CtuOI+Wg9+Jj
+f/kFpds3jkGGRbjjjQtiYUfhMW7SyxuItS/g7hCk38m+wEnYromChG9fblc2E3IL
+HZlW6bmIzlC4Rx7eZWQOwi8AyYp+sGScM4E9te+fvC1rTW86tmNuYXpFyi16Bkmy
+0wIDAQAB
 -----END PUBLIC KEY-----
 ```
 
@@ -142,39 +177,15 @@ Once you connect, the server will show the peer certificate's public key it reci
 
 ```
 -----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzHdXnqlUgvFlTaAXBMAU
-cxi74Vfb0tA7Pn/356xIqB820t6bSRmCutPOnHUYz02piNFJP2Vx+HKiqmT3S7jy
-Yv6xPWxGfOHmKbwl8UkMzOdPtTyMLk11TSGA0Wgar9e/chU1UxH1Rk9sQ5CG8xBK
-7ToGGIn0fxBvyWeAucsgn3PONuuqrKsTfW/hckyk866oI8e8C7+XWrbtM6gBt4/U
-Z2OiF/QfdoXB4oBFLi+NHkLdYBk0pM6R/xaXCGUchLQkfw6MdD68MvfNVSY7YIuy
-g5ZIrWFQzSptCtn4mF9CLooRK/2d360d9hsCUybCTRAw6D8Ra27aVS5+Vl+lajxu
-JQIDAQAB
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx/qz+6n5QBneTLdTjauM
+lvVPmdfKh0Nd4F1VmXJQzv0BhhZC0yO4rIE43eMorZfzKxPaHYWfCL+UowY/+V3B
+/SunFRH7gFyEl0D7Tw6EUI3LOui3UH69EecnF8qNQWtcCe1nNBo0H+xNfAqTbTi6
+3/xAcG6v5gT3nhAWmnlfFCZcgyZRX7Vfy5ghdE+o7jk9mEJuwVX0CtuOI+Wg9+Jj
+f/kFpds3jkGGRbjjjQtiYUfhMW7SyxuItS/g7hCk38m+wEnYromChG9fblc2E3IL
+HZlW6bmIzlC4Rx7eZWQOwi8AyYp+sGScM4E9te+fvC1rTW86tmNuYXpFyi16Bkmy
+0wIDAQAB
 -----END PUBLIC KEY-----
 ```
-
-## ECDSA Keys
-
-for ecc keys, crate `k2`
-
-```bash
-gcloud kms keys create k2 --keyring=tlskr \
-   --location=global --purpose=asymmetric-signing    --default-algorithm=ec-sign-p256-sha256
-
-gcloud kms keys add-iam-policy-binding k2  \
-        --keyring=tlskr --location=global  \
-        --member=user:$GCLOUD_USER  --role=roles/cloudkms.signer
-
-gcloud kms keys add-iam-policy-binding k2 \
-        --keyring=tlskr --location=global  \
-        --member=user:$GCLOUD_USER  --role=roles/cloudkms.viewer
-
-gcloud kms keys list --keyring=tlskr --location=global
-NAME                                                                  PURPOSE          ALGORITHM                 PROTECTION_LEVEL  LABELS  PRIMARY_ID  PRIMARY_STATE
-projects/srashid-test2/locations/global/keyRings/tlskr/cryptoKeys/k1  ASYMMETRIC_SIGN  RSA_SIGN_PSS_2048_SHA256  SOFTWARE
-projects/srashid-test2/locations/global/keyRings/tlskr/cryptoKeys/k2  ASYMMETRIC_SIGN  EC_SIGN_P256_SHA256       SOFTWARE
-```
-
-Then edit `csr/main.go` and `example/client/client.go` and uncomment the ecdsa signing section
 
 
 ## AuditLogs

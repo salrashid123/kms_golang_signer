@@ -32,19 +32,11 @@ func main() {
 	r, err := salkms.NewKMSCrypto(&salkms.KMS{
 		ProjectId:          "core-eso",
 		LocationId:         "us-central1",
-		KeyRing:            "kr",
-		Key:                "rskey1",
+		KeyRing:            "tkr1",
+		Key:                "rsa1",
 		KeyVersion:         "1",
 		SignatureAlgorithm: x509.SHA256WithRSA,
 	})
-	// r, err := salkms.NewKMSCrypto(&salkms.KMS{
-	// 	ProjectId:          "core-eso",
-	// 	LocationId:         "us-central1",
-	// 	KeyRing:            "kr",
-	// 	Key:                "rskey2",
-	// 	KeyVersion:         "1",
-	// 	SignatureAlgorithm: x509.SHA256WithRSAPSS,
-	// })
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -88,8 +80,8 @@ func main() {
 	ecr, err := salkms.NewKMSCrypto(&salkms.KMS{
 		ProjectId:          "core-eso",
 		LocationId:         "us-central1",
-		KeyRing:            "kr",
-		Key:                "ec1",
+		KeyRing:            "tkr1",
+		Key:                "ecc1",
 		KeyVersion:         "1",
 		SignatureAlgorithm: x509.ECDSAWithSHA256,
 		ECCRawOutput:       false,
@@ -141,8 +133,8 @@ func main() {
 	ecrr, err := salkms.NewKMSCrypto(&salkms.KMS{
 		ProjectId:          "core-eso",
 		LocationId:         "us-central1",
-		KeyRing:            "kr",
-		Key:                "ec1",
+		KeyRing:            "tkr1",
+		Key:                "ecc1",
 		KeyVersion:         "1",
 		SignatureAlgorithm: x509.ECDSAWithSHA256,
 		ECCRawOutput:       true,
