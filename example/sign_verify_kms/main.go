@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/asn1"
 	"encoding/base64"
 	"fmt"
@@ -30,12 +29,11 @@ func main() {
 	digest := h.Sum(nil)
 
 	r, err := salkms.NewKMSCrypto(&salkms.KMS{
-		ProjectId:          "core-eso",
-		LocationId:         "us-central1",
-		KeyRing:            "tkr1",
-		Key:                "rsa1",
-		KeyVersion:         "1",
-		SignatureAlgorithm: x509.SHA256WithRSA,
+		ProjectId:  "core-eso",
+		LocationId: "us-central1",
+		KeyRing:    "tkr1",
+		Key:        "rsa1",
+		KeyVersion: "1",
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -78,13 +76,12 @@ func main() {
 
 	//  ec-sign-p256-sha256
 	ecr, err := salkms.NewKMSCrypto(&salkms.KMS{
-		ProjectId:          "core-eso",
-		LocationId:         "us-central1",
-		KeyRing:            "tkr1",
-		Key:                "ecc1",
-		KeyVersion:         "1",
-		SignatureAlgorithm: x509.ECDSAWithSHA256,
-		ECCRawOutput:       false,
+		ProjectId:    "core-eso",
+		LocationId:   "us-central1",
+		KeyRing:      "tkr1",
+		Key:          "ecc1",
+		KeyVersion:   "1",
+		ECCRawOutput: false,
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -131,13 +128,12 @@ func main() {
 	// now sign/verify as RAW by setting the input flag
 
 	ecrr, err := salkms.NewKMSCrypto(&salkms.KMS{
-		ProjectId:          "core-eso",
-		LocationId:         "us-central1",
-		KeyRing:            "tkr1",
-		Key:                "ecc1",
-		KeyVersion:         "1",
-		SignatureAlgorithm: x509.ECDSAWithSHA256,
-		ECCRawOutput:       true,
+		ProjectId:    "core-eso",
+		LocationId:   "us-central1",
+		KeyRing:      "tkr1",
+		Key:          "ecc1",
+		KeyVersion:   "1",
+		ECCRawOutput: true,
 	})
 	if err != nil {
 		fmt.Println(err)

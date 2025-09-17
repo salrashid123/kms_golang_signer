@@ -20,7 +20,8 @@ The client will use the client `x509` and KMS private key reference to establish
 
 For more information, see 
 
-* [crypto.Signer, implementations for Google Cloud KMS and Trusted Platform Modules](https://github.com/salrashid123/signer)
+* [crypto.Signer, implementations for Trusted Platform Modules](https://github.com/salrashid123/tpmsigner)
+* [crypto.Signer, implementations for PKCS11](https://github.com/salrashid123/pkcssigner)
 * [mTLS with PKCS11](https://github.com/salrashid123/mtls_pkcs11)
 * [mTLS with TPM bound private key](https://github.com/salrashid123/go_tpm_https_embed)
 

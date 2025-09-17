@@ -14,7 +14,6 @@ import (
 	"encoding/pem"
 	"io"
 	"math/big"
-	"os"
 	"sync"
 
 	"context"
@@ -33,30 +32,18 @@ var (
 type KMS struct {
 	crypto.Signer // https://golang.org/pkg/crypto/#Signer
 
-	PublicKeyFile      string
-	publicKey          crypto.PublicKey
-	ProjectId          string
-	LocationId         string
-	KeyRing            string
-	Key                string
-	KeyVersion         string
-	X509Certificate    *x509.Certificate
-	ECCRawOutput       bool // for ECC keys, output raw signatures. If false, signature is ans1 formatted
-	SignatureAlgorithm x509.SignatureAlgorithm
+	publicKey       crypto.PublicKey
+	ProjectId       string
+	LocationId      string
+	KeyRing         string
+	Key             string
+	KeyVersion      string
+	X509Certificate *x509.Certificate
+	ECCRawOutput    bool // for ECC keys, output raw signatures. If false, signature is ans1 formatted
+
 }
 
 func NewKMSCrypto(conf *KMS) (KMS, error) {
-
-	if conf.X509Certificate != nil && conf.PublicKeyFile != "" {
-		return KMS{}, fmt.Errorf("salrashid123/signer: Either X509Certificate or a the path to the certificate must be specified; not both")
-	}
-
-	if conf.SignatureAlgorithm == x509.UnknownSignatureAlgorithm {
-		conf.SignatureAlgorithm = x509.SHA256WithRSA
-	}
-	if (conf.SignatureAlgorithm != x509.SHA256WithRSA) && (conf.SignatureAlgorithm != x509.SHA256WithRSAPSS) && (conf.SignatureAlgorithm != x509.ECDSAWithSHA256) {
-		return KMS{}, fmt.Errorf("signatureALgorithm must be either x509.SHA256WithRSA or x509.SHA256WithRSAPSS or x509.ECDSAWithSHA256")
-	}
 
 	if conf.ProjectId == "" {
 		return KMS{}, fmt.Errorf("projectID cannot be null")
@@ -92,19 +79,7 @@ func (t KMS) Public() crypto.PublicKey {
 func (t KMS) TLSCertificate() (tls.Certificate, error) {
 
 	if t.X509Certificate == nil {
-		pubPEM, err := os.ReadFile(t.PublicKeyFile)
-		if err != nil {
-			return tls.Certificate{}, fmt.Errorf("unable to read keys %v", err)
-		}
-		block, _ := pem.Decode([]byte(pubPEM))
-		if block == nil {
-			return tls.Certificate{}, fmt.Errorf("failed to parse PEM block containing the public key")
-		}
-		pub, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return tls.Certificate{}, fmt.Errorf("failed to parse public key: %v ", err)
-		}
-		t.X509Certificate = pub
+		return tls.Certificate{}, fmt.Errorf("X509Certificate must be set for TLS")
 	}
 
 	var privKey crypto.PrivateKey = t
@@ -132,7 +107,7 @@ func (t KMS) Sign(_ io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, e
 	pss, ok := opts.(*rsa.PSSOptions)
 	if ok {
 		if pss.SaltLength != rsa.PSSSaltLengthEqualsHash {
-			fmt.Println("salkms: PSS salt length will automatically get set to rsa.PSSSaltLengthEqualsHash ")
+			fmt.Println("kmssigner: PSS salt length will automatically get set to rsa.PSSSaltLengthEqualsHash ")
 		}
 	}
 	req := &kmspb.AsymmetricSignRequest{

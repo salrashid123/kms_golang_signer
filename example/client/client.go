@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"log"
@@ -32,14 +33,31 @@ func main() {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
+	pubPEMData, err := os.ReadFile("../certs/client.crt")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	block, _ := pem.Decode(pubPEMData)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	filex509, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	r, err := sal.NewKMSCrypto(&sal.KMS{
-		ProjectId:          *projectID,
-		PublicKeyFile:      "../certs/client.crt",
-		LocationId:         "us-central1",
-		KeyRing:            "tkr1",
-		Key:                "rsapss1", // "rsa1",
-		KeyVersion:         "1",
-		SignatureAlgorithm: x509.SHA256WithRSAPSS, // x509.ECDSAWithSHA256,
+		ProjectId:       *projectID,
+		X509Certificate: filex509,
+		LocationId:      "us-central1",
+		KeyRing:         "tkr1",
+		Key:             "rsapss1", // "rsa1",
+		KeyVersion:      "1",
 	})
 	if err != nil {
 		log.Println(err)
