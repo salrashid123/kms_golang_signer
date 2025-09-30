@@ -31,6 +31,7 @@ var (
 
 type KMS struct {
 	crypto.Signer // https://golang.org/pkg/crypto/#Signer
+	// _      crypto.MessageSigner
 
 	publicKey       crypto.PublicKey
 	ProjectId       string
@@ -117,6 +118,57 @@ func (t KMS) Sign(_ io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, e
 				Sha256: digest,
 			},
 		},
+	}
+	dresp, err := kmsClient.AsymmetricSign(ctx, req)
+	if err != nil {
+		fmt.Printf("Error signing with kms client %v", err)
+		return nil, err
+	}
+
+	if t.ECCRawOutput {
+		epub := t.Public().(*ecdsa.PublicKey)
+		curveBits := epub.Params().BitSize
+		keyBytes := curveBits / 8
+		if curveBits%8 > 0 {
+			keyBytes += 1
+		}
+		out := make([]byte, 2*keyBytes)
+		var sigStruct struct{ R, S *big.Int }
+		_, err := asn1.Unmarshal(dresp.Signature, &sigStruct)
+		if err != nil {
+			return nil, fmt.Errorf("tpmjwt: can't unmarshall ecc struct %v", err)
+		}
+		sigStruct.R.FillBytes(out[0:keyBytes])
+		sigStruct.S.FillBytes(out[keyBytes:])
+		return out, nil
+	}
+	return dresp.Signature, nil
+
+}
+
+func (t KMS) SignMessage(rand io.Reader, msg []byte, opts crypto.SignerOpts) (signature []byte, err error) {
+	refreshMutex.Lock()
+	defer refreshMutex.Unlock()
+
+	ctx := context.Background()
+	parentName := fmt.Sprintf("projects/%s/locations/%s/keyRings/%s/cryptoKeys/%s/cryptoKeyVersions/%s", t.ProjectId, t.LocationId, t.KeyRing, t.Key, t.KeyVersion)
+
+	kmsClient, err := cloudkms.NewKeyManagementClient(ctx)
+	if err != nil {
+		fmt.Printf("Error getting kms client %v", err)
+		return nil, err
+	}
+	defer kmsClient.Close()
+
+	pss, ok := opts.(*rsa.PSSOptions)
+	if ok {
+		if pss.SaltLength != rsa.PSSSaltLengthEqualsHash {
+			fmt.Println("kmssigner: PSS salt length will automatically get set to rsa.PSSSaltLengthEqualsHash ")
+		}
+	}
+	req := &kmspb.AsymmetricSignRequest{
+		Name: parentName,
+		Data: msg,
 	}
 	dresp, err := kmsClient.AsymmetricSign(ctx, req)
 	if err != nil {
