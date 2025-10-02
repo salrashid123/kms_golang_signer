@@ -105,6 +105,33 @@ func (t KMS) Sign(_ io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, e
 	}
 	defer kmsClient.Close()
 
+	dgst := &kmspb.Digest{}
+
+	hf := opts.HashFunc()
+
+	switch hf {
+	case crypto.SHA256:
+		dgst = &kmspb.Digest{
+			Digest: &kmspb.Digest_Sha256{
+				Sha256: digest,
+			},
+		}
+	case crypto.SHA384:
+		dgst = &kmspb.Digest{
+			Digest: &kmspb.Digest_Sha384{
+				Sha384: digest,
+			},
+		}
+	case crypto.SHA512:
+		dgst = &kmspb.Digest{
+			Digest: &kmspb.Digest_Sha512{
+				Sha512: digest,
+			},
+		}
+	default:
+		return nil, fmt.Errorf("kmssigner: cunsupported hash %s", hf.String())
+	}
+
 	pss, ok := opts.(*rsa.PSSOptions)
 	if ok {
 		if pss.SaltLength != rsa.PSSSaltLengthEqualsHash {
@@ -112,12 +139,8 @@ func (t KMS) Sign(_ io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, e
 		}
 	}
 	req := &kmspb.AsymmetricSignRequest{
-		Name: parentName,
-		Digest: &kmspb.Digest{
-			Digest: &kmspb.Digest_Sha256{
-				Sha256: digest,
-			},
-		},
+		Name:   parentName,
+		Digest: dgst,
 	}
 	dresp, err := kmsClient.AsymmetricSign(ctx, req)
 	if err != nil {
@@ -136,7 +159,7 @@ func (t KMS) Sign(_ io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, e
 		var sigStruct struct{ R, S *big.Int }
 		_, err := asn1.Unmarshal(dresp.Signature, &sigStruct)
 		if err != nil {
-			return nil, fmt.Errorf("tpmjwt: can't unmarshall ecc struct %v", err)
+			return nil, fmt.Errorf("kmssigner: can't unmarshall ecc struct %v", err)
 		}
 		sigStruct.R.FillBytes(out[0:keyBytes])
 		sigStruct.S.FillBytes(out[keyBytes:])
